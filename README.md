@@ -1,0 +1,1 @@
+-LocalVoice---Community-Problem-Reporter Breaking language barriers in civic engagement. Report local issues in your native language, officials see them in theirs. Powered by Lingo.dev's real-time translation. Built for Lingo.dev Hackathon 2026. #i18n #CivicTech #Multilingual
