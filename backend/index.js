@@ -5,6 +5,7 @@ dotenv.config();
 
 const connectDB = require("./config/db");
 const auth = require("./router/auth");
+const reportRouter = require("./router/reportRouter");
 
 
 
@@ -15,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api' ,auth)
+app.use('/api', reportRouter)
 
 // define PORT 
 const PORT = process.env.PORT || 5000;
