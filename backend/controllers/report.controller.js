@@ -10,7 +10,7 @@ exports.createReport = async (req, res) => {
       description,
       category,
       location,
-      language = "hi",
+      language = "en",
       adminLanguage = "en",
       reportedBy,
     } = req.body;
