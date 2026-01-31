@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const upload = require("../middlewares/upload.middleware");
 const { createReport } = require("../controllers/report.controller");
+const Report = require("../models/Report.js");
+const { translateText } = require("../utils/translate");
 
 router.post(
   "/reports",
@@ -17,7 +19,7 @@ router.get("/reports/all", async (req, res) => {
       category,
       priority,
       page = 1,
-      limit = 10,
+      limit,
       sortBy = "createdAt",
       order = "desc",
     } = req.query;
