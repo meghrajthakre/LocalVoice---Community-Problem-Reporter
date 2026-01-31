@@ -10,7 +10,7 @@ exports.createReport = async (req, res) => {
       description,
       category,
       location,
-      language = "en",
+      language = "hi",
       adminLanguage = "en",
       reportedBy,
     } = req.body;
@@ -33,22 +33,27 @@ exports.createReport = async (req, res) => {
       });
     }
 
-    const parsedLocation = JSON.parse(location);
-    const parsedReporter = JSON.parse(reportedBy);
+    /* ---------- SAFE JSON PARSE ---------- */
+    let parsedLocation, parsedReporter;
+    try {
+      parsedLocation = JSON.parse(location);
+      parsedReporter = JSON.parse(reportedBy);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON in location or reportedBy",
+      });
+    }
 
-    /* ---------- TRANSLATION ---------- */
-    const translatedTitle = await translateText(title, language, adminLanguage);
-    const translatedDescription = await translateText(
-      description,
-      language,
-      adminLanguage
-    );
+    /* ---------- TRANSLATION (ALWAYS) ---------- */
+    const translatedTitle = await translateText(title, adminLanguage);
+    const translatedDescription = await translateText(description, adminLanguage);
 
     /* ---------- IMAGE UPLOAD ---------- */
     let imageData = {};
     if (req.file) {
       imageData = await uploadImage(req.file.path);
-      fs.unlinkSync(req.file.path); // cleanup temp file
+      fs.unlinkSync(req.file.path);
     }
 
     /* ---------- CREATE REPORT ---------- */
@@ -72,31 +77,23 @@ exports.createReport = async (req, res) => {
           ],
         },
       },
+      status: "new",
+      priority: "medium",
       language,
       adminLanguage,
       image: imageData,
       reportedBy: parsedReporter,
     });
 
-    /* ---------- RESPONSE ---------- */
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Report submitted successfully",
-      data: {
-        _id: report._id,
-        title: report.title,
-        description: report.description,
-        category: report.category,
-        status: report.status,
-        priority: report.priority,
-        language: report.language,
-        image: report.image,
-        createdAt: report.createdAt,
-      },
+      data: report,
     });
+
   } catch (error) {
     console.error("Create Report Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to submit report",
     });

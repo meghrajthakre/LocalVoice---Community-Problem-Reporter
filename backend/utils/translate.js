@@ -1,31 +1,21 @@
-const axios = require("axios");
+const { LingoDotDevEngine } = require("lingo.dev/sdk");
 
-const LINGO_API_URL = "https://api.lingo.dev/v1/translate";
+const lingo = new LingoDotDevEngine({
+  apiKey: process.env.LINGO_API_KEY,
+});
 
-exports.translateText = async (text, from, to) => {
-  if (!text || from === to) {
-    return text;
-  }
-
+exports.translateText = async (text, targetLang = "en") => {
   try {
-    const response = await axios.post(
-      LINGO_API_URL,
-      {
-        text,
-        source_language: from,
-        target_language: to,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.LINGO_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    if (!text) return text;
 
-    return response.data.translated_text || text;
+    const translated = await lingo.localizeText(text, {
+      sourceLocale: null,      // auto-detect
+      targetLocale: targetLang // "en"
+    });
+
+    return translated || text;
   } catch (error) {
-    console.error("Translation failed:", error.message);
-    return text; // fallback
+    console.error("Lingo Translation Error:", error.message);
+    return text; // fallback (never break report creation)
   }
 };
