@@ -1,16 +1,20 @@
 const express = require("express");
 const router = express.Router();
+const { userAuth } = require("../middlewares/authMiddleware.js");
 const upload = require("../middlewares/upload.middleware");
 const { createReport } = require("../controllers/report.controller");
 const Report = require("../models/Report.js");
 const { translateText } = require("../utils/translate");
+const User = require("../models/User.js");
+const { isAdmin } = require("../middlewares/adminAuth.js");
 
+// to create a report
 router.post(
   "/reports",
   upload.single("image"),
   createReport
 );
-
+// to get all reports with filters, pagination, sorting, and translation
 router.get("/reports/all", async (req, res) => {
   try {
     const {
@@ -85,5 +89,123 @@ router.get("/reports/all", async (req, res) => {
     });
   }
 });
+
+// to get a single report by ID with translation
+router.get("/reports/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { language } = req.query;
+
+    let report = await Report.findById(id)
+      .populate("reportedBy", "name email")
+      .lean();
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: "Report not found",
+      });
+    }
+
+    // 🔥 Translation logic
+    if (language) {
+      const translatedTitle = await translateText(
+        report.title.original,
+        language
+      );
+
+      const translatedDescription = await translateText(
+        report.description.original,
+        language
+      );
+
+      report = {
+        ...report,
+        title: {
+          original: report.title.original,
+          translated: translatedTitle,
+        },
+        description: {
+          original: report.description.original,
+          translated: translatedDescription,
+        },
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      data: report,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch report",
+    });
+  }
+});
+
+
+// update report status
+router.put("/reports/:id/status", userAuth, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, priority } = req.body;
+
+    // ✅ Allowed values
+    const allowedStatus = ["new", "in-progress", "resolved"];
+    const allowedPriority = ["low", "medium", "high"];
+
+    if (status && !allowedStatus.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+      });
+    }
+
+    if (priority && !allowedPriority.includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid priority value",
+      });
+    }
+
+    // 🔍 Step 1: find report
+    const report = await Report.findById(id);
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: "Report not found",
+      });
+    }
+
+    // ✏️ Step 2: update fields
+    if (status) report.status = status;
+    if (priority) report.priority = priority;
+
+    // 💾 Step 3: save
+    await report.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Report status updated successfully",
+      data: {
+        _id: report._id,
+        status: report.status,
+        priority: report.priority,
+        updatedAt: report.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update report status",
+    });
+  }
+});
+
+
 
 module.exports = router;
