@@ -3,7 +3,9 @@ import User from "../models/User.js";
 
 export const userAuth = async (req, res, next) => {
   try {
-    const token = req.cookies?.token || req.header("Authorization")?.replace("Bearer ", "");
+    const token = req.cookies?.token || req.header("Authorization")?.replace("Bearer ", "").trim();
+    console.log("Auth Token:", token); // should now show your JWT
+
 
     if (!token) {
       return res.status(401).json({
