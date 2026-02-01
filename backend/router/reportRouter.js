@@ -207,5 +207,97 @@ router.put("/reports/:id/status", userAuth, isAdmin, async (req, res) => {
 });
 
 
+// Admin adds a respond to a report (auto-translated to citizen's language).
+router.post("/reports/:id/respond", userAuth, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params; // report ID
+    const { text, respondedBy, language = "en" } = req.body;
+
+    if (!text || !respondedBy) {
+      return res.status(400).json({
+        success: false,
+        message: "Response text and respondedBy are required",
+      });
+    }
+
+    // Find the report
+    const report = await Report.findById(id);
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: "Report not found",
+      });
+    }
+
+    // Translate response to reporter's language
+    let translatedText = text;
+    if (report.language && report.language !== language) {
+      translatedText = await translateText(text, report.language);
+    }
+
+    // Add response to report
+    const responseData = {
+      text: {
+        original: text,
+        translated: translatedText,
+      },
+      respondedBy,
+      respondedByEmail: req.user?.email || "", // optional
+      respondedAt: new Date(),
+      language,
+    };
+
+    report.responses.push(responseData);
+    await report.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Response added successfully",
+      data: {
+        _id: report._id,
+        responses: report.responses,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add response",
+    });
+  }
+});
+
+// delete a report admin only
+
+router.delete("/reports/:id", userAuth, isAdmin, async (req, res) => {
+   try {
+    const { id } = req.params;
+
+    // Find the report
+    const report = await Report.findById(id);
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: "Report not found",
+      });
+    }
+
+    // Delete the report
+    await Report.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Report deleted successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete report",
+    });
+  
+  }
+
+});
 
 module.exports = router;
