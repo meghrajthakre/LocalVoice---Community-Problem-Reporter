@@ -300,4 +300,57 @@ router.delete("/reports/:id", userAuth, isAdmin, async (req, res) => {
 
 });
 
+// Get report statistics (Admin dashboard)
+router.get("/reports/stats", userAuth, isAdmin, async (req, res) => {
+  try {
+    const stats = await Report.getStatistics();
+
+    // total count
+    const total = stats.total[0]?.count || 0;
+
+    // helper to convert aggregation array → object
+    const toObject = (arr) => {
+      const obj = {};
+      arr.forEach(item => {
+        obj[item._id] = item.count;
+      });
+      return obj;
+    };
+
+    const byStatus = toObject(stats.byStatus);
+    const byCategory = toObject(stats.byCategory);
+    const byPriority = toObject(stats.byPriority);
+
+    // average resolution time (convert hours → days)
+    const avgHours = stats.avgResolutionTime[0]?.avgTime || 0;
+    const averageResolutionTime = Number((avgHours / 24).toFixed(1));
+
+    // reports in last 24 hours
+    const recentReports = await Report.countDocuments({
+      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total,
+        byStatus,
+        byCategory,
+        byPriority,
+        recentReports,
+        averageResolutionTime
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch report statistics"
+    });
+  }
+});
+
+
+
 module.exports = router;
